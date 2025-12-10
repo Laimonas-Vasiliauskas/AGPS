@@ -65,14 +65,19 @@ namespace AGPS.Repositories
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    string sql = "UPDATE projects SET madeby = @madeby, " +
-                                 "typeofwork = @typeofwork, comments = @comments, isChecked = @isChecked WHERE id = @id";
+                    string sql = "UPDATE projects SET projectname = @projectname, partname = @partname, madeby = @madeby, " +
+                                 "typeofwork = @typeofwork, created_at = @created_at, comments = @comments, isChecked = @isChecked WHERE id = @id";
 
                     using (SqlCommand command = new SqlCommand(sql, connection))
                     {
+                        command.Parameters.AddWithValue("@projectname", project.projectname);
+                        command.Parameters.AddWithValue("@partname", project.partname);
                         command.Parameters.AddWithValue("@madeby", project.madeby);
                         command.Parameters.AddWithValue("@typeofwork", project.typeofwork);
+                        command.Parameters.AddWithValue("@created_at", DateTime.Now);
                         command.Parameters.AddWithValue("@comments", project.comments);
+                        command.Parameters.AddWithValue("@isChecked", project.isChecked);
+                        command.Parameters.AddWithValue("@id", project.id);
                         command.ExecuteNonQuery();
                     }
                 }
@@ -82,5 +87,10 @@ namespace AGPS.Repositories
                 Console.WriteLine("An error occurred while updating project: " + ex.Message);
             }
         }
+
+        /*public void ShowRelatedParts(Project project)
+        {
+            if (project.projectname != )
+        } */
     }
 }

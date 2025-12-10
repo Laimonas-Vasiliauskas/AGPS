@@ -11,6 +11,7 @@ using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace AGPS
 {
@@ -22,19 +23,7 @@ namespace AGPS
             InitializeComponent();
             LoadParts();
             LoadProjects();
-            
 
-            updateTimer = new Timer(); // Laikinas real time update sprendimas
-            updateTimer.Interval = 20000; // Kas 20 s
-            updateTimer.Tick += UpdateTimer_Tick;
-            updateTimer.Start();
-        }
-
-        private void UpdateTimer_Tick(Object sender, EventArgs e) // Laikinas real time update sprendimas
-        {
-            LoadProjects();
-            LoadParts();
-            
         }
 
         private void LoadProjects()
@@ -44,11 +33,11 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 var projects = repo.GetProjects();
 
-                comboBox1.DataSource = projects;
-                comboBox1.DisplayMember = "projectname";
-                comboBox1.ValueMember = "id";
+                comboBoxProject.DataSource = projects;
+                comboBoxProject.DisplayMember = "projectname";
+                comboBoxProject.ValueMember = "id";
 
-                
+
 
             }
             catch (Exception ex)
@@ -64,11 +53,11 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 var parts = repo.GetProjects();
 
-                comboBox2.DataSource = parts;
-                comboBox2.DisplayMember = "partname";
+                comboBoxPartList.DataSource = parts;
+                comboBoxPartList.DisplayMember = "partname";
 
-                
-                
+
+
 
             }
             catch (Exception ex)
@@ -81,10 +70,8 @@ namespace AGPS
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            //comboBox1.SelectedIndex = 0;
-            //comboBox2.SelectedIndex = 0;
-            comboBox3.SelectedIndex = 0;
-            
+            comboBoxTypeOfWork.SelectedIndex = 0;
+
 
         }
 
@@ -95,36 +82,45 @@ namespace AGPS
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            comboBox2.SelectedIndex = comboBox1.SelectedIndex;
+            if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
+            {
+                projectId = id;
+            }
+            else if (comboBoxProject.SelectedItem is Project p)
+            {
+                projectId = p.id;
+            }
+            comboBoxPartList.SelectedIndex = comboBoxProject.SelectedIndex;
         }
 
-        private int projectId = 0; 
+        private int projectId = 0;
 
-        private void button1_Click(object sender, EventArgs e) // Kol kas neveikia
+        // replace/adjust your button handler so it only shows success after a real update
+        private void button1_Click(object sender, EventArgs e)
         {
-            /*Project project = new Project(); 
-            project.id = this.projectId;
-            project.projectname = this.comboBox1.Text;
-            project.partname = this.comboBox2.Text;
-            project.madeby = this.textBox1.Text;
-            project.typeofwork = this.comboBox3.Text;    
-            project.created_at = this.dateTimePicker1.Text;
-            project.comments = this.textBox2.Text;
-            
-
-            var repo = new ProjectRepository();
-
-            if (this.projectId != 0)
-            {
-                repo.UpdateProject(project);
-            }
-            else
+            if (this.projectId == 0)
             {
                 MessageBox.Show("No project selected to update.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            this.DialogResult = DialogResult.OK; */ 
+            var repo = new ProjectRepository();
+
+            Project project = new Project
+            {
+                id = this.projectId,
+                projectname = this.comboBoxProject.Text,
+                partname = this.comboBoxPartList.Text,
+                madeby = this.textBoxMadeBy.Text,
+                typeofwork = this.comboBoxTypeOfWork.Text,
+                created_at = this.dateTimePickerDate.Text,
+                comments = this.textBoxComments.Text
+            };
+
+            // Option A: preserve DB-only fields inside repository (recommended)
+            repo.UpdateProject(project);
+
+            MessageBox.Show("Project updated successfully", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
     }
