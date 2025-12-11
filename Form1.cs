@@ -17,13 +17,19 @@ namespace AGPS
 {
     public partial class Form1 : Form
     {
-        private Timer updateTimer;
         public Form1()
         {
             InitializeComponent();
             LoadParts();
             LoadProjects();
 
+           
+
+        }
+
+        // Po projekto atnaujinimo, lange turi pasikeist duomenis
+        private void UpdateWindow()
+        { 
         }
 
         private void LoadProjects()
@@ -36,6 +42,8 @@ namespace AGPS
                 comboBoxProject.DataSource = projects;
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
+                comboBoxRemaining.DataSource = projects;
+                comboBoxRemaining.DisplayMember = "remaining";
 
 
 
@@ -55,6 +63,10 @@ namespace AGPS
 
                 comboBoxPartList.DataSource = parts;
                 comboBoxPartList.DisplayMember = "partname";
+                
+
+
+
 
 
 
@@ -95,7 +107,6 @@ namespace AGPS
 
         private int projectId = 0;
 
-        // replace/adjust your button handler so it only shows success after a real update
         private void button1_Click(object sender, EventArgs e)
         {
             if (this.projectId == 0)
@@ -106,19 +117,65 @@ namespace AGPS
 
             var repo = new ProjectRepository();
 
+            // get current project from the bound list or repository so we preserve current values
+            Project current = null;
+            if (comboBoxProject.SelectedItem is Project p) current = p;
+            else
+            {
+                var all = repo.GetProjects();
+                current = all.Find(x => x.id == this.projectId);
+            }
+
+            if (current == null)
+            {
+                MessageBox.Show("Selected project not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // Leidzia tik irasyt skaicius
+            if (!int.TryParse(this.textBoxDone.Text, out int addedDone))
+            {
+                MessageBox.Show("Enter a valid number in Done field.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // Jeigu visos dalis padarytos ir bandoma prideti nauju, programa neleidzia tai padaryti
+            else if (current.remaining == 0 && addedDone > 0)
+            {
+                MessageBox.Show("No remaining work to complete.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Neleidzia pridet 0 daliu
+            // Bet galima atimt dalis, jeigu pridetas klaidingas kiekis
+            else if (addedDone == 0)
+            {
+                MessageBox.Show("Done can't be 0.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int newDone = current.done + addedDone;
+            int newRemaining = current.remaining - addedDone;
+            if (newRemaining < 0) newRemaining = 0;
+
             Project project = new Project
             {
                 id = this.projectId,
                 projectname = this.comboBoxProject.Text,
                 partname = this.comboBoxPartList.Text,
+                done = newDone,
+                remaining = newRemaining,
                 madeby = this.textBoxMadeBy.Text,
                 typeofwork = this.comboBoxTypeOfWork.Text,
                 created_at = this.dateTimePickerDate.Text,
                 comments = this.textBoxComments.Text
             };
 
-            // Option A: preserve DB-only fields inside repository (recommended)
-            repo.UpdateProject(project);
+            DialogResult dialogResult = MessageBox.Show("Are you sure you want to update this project?", "Confirm Update", MessageBoxButtons.YesNo);
+            if(dialogResult == DialogResult.Yes)
+            {
+                repo.UpdateProject(project);
+            }
 
             MessageBox.Show("Project updated successfully", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

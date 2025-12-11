@@ -28,22 +28,23 @@ namespace AGPS.Repositories
                 {
                     connection.Open();
 
-                    string sql = "SELECT id, projectname, partname, madeby, typeofwork, created_at, comments, isChecked FROM projects ORDER BY id DESC";
+                    string sql = "SELECT * From projects ORDER BY id DESC";
                     using (SqlCommand command = new SqlCommand(sql, connection))
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            var project = new Project();
+                            Project project = new Project();
 
-                            project.id = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
-                            project.projectname = reader["projectname"] != DBNull.Value ? Convert.ToString(reader["projectname"]) : string.Empty;
-                            project.partname = reader["partname"] != DBNull.Value ? Convert.ToString(reader["partname"]) : string.Empty;
-                            project.madeby = reader["madeby"] != DBNull.Value ? Convert.ToString(reader["madeby"]) : string.Empty;
-                            project.typeofwork = reader["typeofwork"] != DBNull.Value ? Convert.ToString(reader["typeofwork"]) : string.Empty;
-                            project.created_at = reader["created_at"] != DBNull.Value ? Convert.ToString(reader["created_at"]) : string.Empty;
-                            project.comments = reader["comments"] != DBNull.Value ? Convert.ToString(reader["comments"]) : string.Empty;
-                            project.isChecked = reader["isChecked"] != DBNull.Value ? Convert.ToString(reader["isChecked"]) : string.Empty;
+                            project.id = Convert.ToInt32(reader["id"]);
+                            project.projectname = Convert.ToString(reader["projectname"]);
+                            project.partname = Convert.ToString(reader["partname"]);
+                            project.madeby = Convert.ToString(reader["madeby"]);
+                            project.typeofwork = Convert.ToString(reader["typeofwork"]);
+                            project.created_at = Convert.ToString(reader["created_at"]);
+                            project.comments = Convert.ToString(reader["comments"]);
+                            project.remaining = Convert.ToInt32(reader["remaining"]);
+                            project.done = Convert.ToInt32(reader["done"]);
 
                             projects.Add(project);
                         }
@@ -66,7 +67,7 @@ namespace AGPS.Repositories
                 {
                     connection.Open();
                     string sql = "UPDATE projects SET projectname = @projectname, partname = @partname, madeby = @madeby, " +
-                                 "typeofwork = @typeofwork, created_at = @created_at, comments = @comments, isChecked = @isChecked WHERE id = @id";
+                                 "typeofwork = @typeofwork, created_at = @created_at, comments = @comments, remaining = @remaining, done = @done WHERE id = @id";
 
                     using (SqlCommand command = new SqlCommand(sql, connection))
                     {
@@ -76,7 +77,8 @@ namespace AGPS.Repositories
                         command.Parameters.AddWithValue("@typeofwork", project.typeofwork);
                         command.Parameters.AddWithValue("@created_at", DateTime.Now);
                         command.Parameters.AddWithValue("@comments", project.comments);
-                        command.Parameters.AddWithValue("@isChecked", project.isChecked);
+                        command.Parameters.AddWithValue("@remaining", project.remaining);
+                        command.Parameters.AddWithValue("@done", project.done);
                         command.Parameters.AddWithValue("@id", project.id);
                         command.ExecuteNonQuery();
                     }
@@ -88,9 +90,6 @@ namespace AGPS.Repositories
             }
         }
 
-        /*public void ShowRelatedParts(Project project)
-        {
-            if (project.projectname != )
-        } */
+        
     }
 }
