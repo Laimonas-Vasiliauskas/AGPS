@@ -97,7 +97,10 @@ namespace AGPS.Repositories
                 conn.Open();
 
                 // 1) Ar darbuotojo eilutė jau egzistuoja?
-                string findSql = @"SELECT TOP 1 id FROM projects WHERE projectname = @p AND partname = @part AND madeby = @madeby ORDER BY id DESC;";
+                string findSql = @"SELECT TOP 1 id
+                           FROM projects
+                           WHERE projectname = @p AND partname = @part AND madeby = @madeby
+                           ORDER BY id DESC;";
 
                 using (var cmd = new SqlCommand(findSql, conn))
                 {
@@ -110,9 +113,12 @@ namespace AGPS.Repositories
                         return Convert.ToInt32(res);
                 }
 
-                // 2) Nerasta -> paimam bendrą remaining (iš bazinio arba bet kurio įrašo tos grupės)
+                // 2) Nerasta -> paimam bendrą remaining
                 int remaining = 0;
-                string remSql = @"SELECT TOP 1 remaining FROM projects WHERE projectname = @p AND partname = @part ORDER BY id DESC;";
+                string remSql = @"SELECT TOP 1 remaining
+                          FROM projects
+                          WHERE projectname = @p AND partname = @part
+                          ORDER BY id DESC;";
 
                 using (var cmd = new SqlCommand(remSql, conn))
                 {
@@ -124,7 +130,10 @@ namespace AGPS.Repositories
                 }
 
                 // 3) Sukuriam naują darbuotojo eilutę (done=0, remaining=bendras)
-                string insertSql = @"INSERT INTO projects (projectname, partname, madeby, typeofwork, created_at, comments, remaining, done) OUTPUT INSERTED.id VALUES (@p, @part, @madeby, @typeofwork, GETDATE(), '', @remaining, 0);";
+                //    Svarbu: SCOPE_IDENTITY() veikia su triggeriais
+                string insertSql = @"INSERT INTO projects (projectname, partname, madeby, typeofwork, created_at, comments, remaining, done)
+                                    VALUES (@p, @part, @madeby, @typeofwork, GETDATE(), '', @remaining, 0);
+                                    SELECT CAST(SCOPE_IDENTITY() AS int);";
 
                 using (var cmd = new SqlCommand(insertSql, conn))
                 {
@@ -138,6 +147,7 @@ namespace AGPS.Repositories
                 }
             }
         }
+
 
         public void AddWork(int id, int doneDelta)
         {
