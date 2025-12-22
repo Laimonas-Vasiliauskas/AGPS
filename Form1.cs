@@ -109,75 +109,61 @@ namespace AGPS
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if (this.projectId == 0)
-            {
-                MessageBox.Show("No project selected to update.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
             var repo = new ProjectRepository();
 
-            // get current project from the bound list or repository so we preserve current values
-            Project current = null;
-            if (comboBoxProject.SelectedItem is Project p) current = p;
-            else
-            {
-                var all = repo.GetProjects();
-                current = all.Find(x => x.id == this.projectId);
-            }
+            string projectName = comboBoxProject.Text.Trim();
+            string partName = comboBoxPartList.Text.Trim();
+            string madeBy = textBoxMadeBy.Text.Trim();
+            string typeOfWork = comboBoxTypeOfWork.Text;
 
-            if (current == null)
+            if (!int.TryParse(textBoxDone.Text, out int doneDelta) || doneDelta <= 0)
             {
-                MessageBox.Show("Selected project not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Done must be more than 0");
                 return;
             }
 
-            // Leidzia tik irasyt skaicius
-            if (!int.TryParse(this.textBoxDone.Text, out int addedDone))
-            {
-                MessageBox.Show("Enter a valid number in Done field.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+            // 1) Randam arba susikuriam darbuotojo row
+            int rowId = repo.GetOrCreateWorkerRowId(projectName, partName, madeBy, typeOfWork);
 
-            // Jeigu visos dalis padarytos ir bandoma prideti nauju, programa neleidzia tai padaryti
-            else if (current.remaining == 0 && addedDone > 0)
-            {
-                MessageBox.Show("No remaining work to complete.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
+            // 2) Vykdom SP: done +delta (tik šitam row), remaining -delta (visiems)
+            repo.AddWork(rowId, doneDelta); // AddWork kviečia dbo.sp_AddWork
 
-            // Neleidzia pridet 0 daliu
-            // Bet galima atimt dalis, jeigu pridetas klaidingas kiekis
-            else if (addedDone == 0)
-            {
-                MessageBox.Show("Done can't be 0.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
+            // 3) Atnaujini langą (persikrauni Remaining ir Done)
+            LoadProjects();
+            LoadParts();
+            MessageBox.Show("Upadated!");
 
-            int newDone = current.done + addedDone;
-            int newRemaining = current.remaining - addedDone;
-            if (newRemaining < 0) newRemaining = 0;
+        }
 
-            Project project = new Project
-            {
-                id = this.projectId,
-                projectname = this.comboBoxProject.Text,
-                partname = this.comboBoxPartList.Text,
-                done = newDone,
-                remaining = newRemaining,
-                madeby = this.textBoxMadeBy.Text,
-                typeofwork = this.comboBoxTypeOfWork.Text,
-                created_at = this.dateTimePickerDate.Text,
-                comments = this.textBoxComments.Text
-            };
+        private void comboBoxTypeOfWork_SelectedIndexChanged(object sender, EventArgs e)
+        {
 
-            DialogResult dialogResult = MessageBox.Show("Are you sure you want to update this project?", "Confirm Update", MessageBoxButtons.YesNo);
-            if(dialogResult == DialogResult.Yes)
-            {
-                repo.UpdateProject(project);
-            }
+        }
+        private void RefreshCurrentSelection()
+        {
+            var repo = new ProjectRepository();
+            var projects = repo.GetProjects();
 
-            MessageBox.Show("Project updated successfully", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string projectName = comboBoxProject.Text;
+            string partName = comboBoxPartList.Text;
+            string madeBy = textBoxMadeBy.Text;
+
+            // done - tik šito darbuotojo
+            var myRow = projects.FirstOrDefault(x =>
+                x.projectname == projectName &&
+                x.partname == partName &&
+                x.madeby == madeBy);
+
+            // remaining - bendras (visi vienodą turi), imam bet kurią eilutę iš grupės
+            var anyRow = projects.FirstOrDefault(x =>
+                x.projectname == projectName &&
+                x.partname == partName);
+
+            if (myRow != null)
+                textBoxDone.Text = myRow.done.ToString(); // jei nori rodyti "mano total done" kažkur kitur, ne delta laukelyje
+
+            if (anyRow != null)
+                comboBoxRemaining.Text = anyRow.remaining.ToString();
         }
 
     }
