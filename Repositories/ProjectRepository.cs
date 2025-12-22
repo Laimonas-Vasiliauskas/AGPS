@@ -134,7 +134,6 @@ namespace AGPS.Repositories
                 string insertSql = @"INSERT INTO projects (projectname, partname, madeby, typeofwork, created_at, comments, remaining, done)
                                     VALUES (@p, @part, @madeby, @typeofwork, GETDATE(), '', @remaining, 0);
                                     SELECT CAST(SCOPE_IDENTITY() AS int);";
-
                 using (var cmd = new SqlCommand(insertSql, conn))
                 {
                     cmd.Parameters.AddWithValue("@p", projectName);
