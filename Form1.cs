@@ -118,7 +118,26 @@ namespace AGPS
 
             if (!int.TryParse(textBoxDone.Text, out int doneDelta) || doneDelta <= 0)
             {
-                MessageBox.Show("Done must be more than 0");
+                MessageBox.Show("Done must be number or more than 0.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Tikrina remaining pasirinktam projektui, kad nepridet daugiau negu reikia
+            var allProjects = repo.GetProjects();
+            var anyRow = allProjects.FirstOrDefault(x =>
+                x.projectname == projectName &&
+                x.partname == partName);
+
+            if (anyRow != null && doneDelta > anyRow.remaining)
+            {
+                MessageBox.Show("Done can't be more than remaining.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Made by negali but tuscia
+            if (string.IsNullOrEmpty(madeBy))
+            {
+                MessageBox.Show("The 'Made By' field can't be empty.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -131,7 +150,8 @@ namespace AGPS
             // 3) Atnaujini langą (persikrauni Remaining ir Done)
             LoadProjects();
             LoadParts();
-            MessageBox.Show("Upadated!");
+            MessageBox.Show("Updated!");
+            return;
 
         }
 
@@ -168,3 +188,8 @@ namespace AGPS
 
     }
 }
+// Pridejau naujus exception
+// 1. Done negali but > remaining
+// 2. Made by visada turi but uzpildytas 
+// Kaip pastebejau, jeigu pasirenki type of work pvz: weld, tai kai bandai prideti kita pvz: assemble tai vistiek prideda kaip weld (pastebejimas tik jeigu made by toks pat)
+// Veliau dar padarisiu kad perduotu ir comments 
