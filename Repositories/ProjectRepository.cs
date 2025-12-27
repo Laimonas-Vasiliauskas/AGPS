@@ -161,7 +161,7 @@ namespace AGPS.Repositories
                     throw new InvalidOperationException($"Project '{projectName}' not found.");
                 }
 
-                // 1) Check if worker row already exists in parts table for this project/part/madeBy
+                // 1) Ar darbuotojo eilutė jau egzistuoja?
                 string findSql = @"SELECT TOP 1 id
                            FROM parts
                            WHERE project_id = @project_id AND partname = @part AND madeby = @madeby
@@ -178,7 +178,7 @@ namespace AGPS.Repositories
                         return Convert.ToInt32(res);
                 }
 
-                // 2) Not found -> get common remaining from parts (or 0)
+                // 2) Nerasta -> paimam bendrą remaining
                 int remaining = 0;
                 string remSql = @"SELECT TOP 1 remaining
                           FROM parts
@@ -194,7 +194,8 @@ namespace AGPS.Repositories
                     remaining = (res == null || res == DBNull.Value) ? 0 : Convert.ToInt32(res);
                 }
 
-                // 3) Create a new worker row in parts table (done=0, remaining=bendras)
+                // 3) Sukuriam naują darbuotojo eilutę (done=0, remaining=bendras)
+                //    Svarbu: SCOPE_IDENTITY() veikia su triggeriais
                 string insertSql = @"INSERT INTO parts (project_id, partname, madeby, typeofwork, created_at, comments, remaining, done)
                                     VALUES (@project_id, @part, @madeby, @typeofwork, GETDATE(), @comments, @remaining, 0);
                                     SELECT CAST(SCOPE_IDENTITY() AS int);";

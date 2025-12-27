@@ -135,7 +135,6 @@
             this.comboBoxPartList.Name = "comboBoxPartList";
             this.comboBoxPartList.Size = new System.Drawing.Size(283, 24);
             this.comboBoxPartList.TabIndex = 9;
-            this.comboBoxPartList.SelectedIndexChanged += new System.EventHandler(this.comboBoxPartList_SelectedIndexChanged);
             // 
             // textBoxMadeBy
             // 
@@ -162,7 +161,6 @@
             this.comboBoxTypeOfWork.Name = "comboBoxTypeOfWork";
             this.comboBoxTypeOfWork.Size = new System.Drawing.Size(283, 24);
             this.comboBoxTypeOfWork.TabIndex = 11;
-            this.comboBoxTypeOfWork.SelectedIndexChanged += new System.EventHandler(this.comboBoxTypeOfWork_SelectedIndexChanged);
             // 
             // textBoxComments
             // 
@@ -201,7 +199,6 @@
             this.label7.Size = new System.Drawing.Size(59, 25);
             this.label7.TabIndex = 16;
             this.label7.Text = "Done";
-            this.label7.Click += new System.EventHandler(this.label7_Click);
             // 
             // label8
             // 
@@ -263,7 +260,6 @@
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "AGPS(user)";
-            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
