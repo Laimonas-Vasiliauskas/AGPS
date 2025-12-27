@@ -22,8 +22,9 @@ namespace AGPS
             InitializeComponent();
             LoadParts();
             LoadProjects();
+            
 
-           
+
 
         }
 
@@ -39,10 +40,18 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 var projects = repo.GetProjects();
 
-                comboBoxProject.DataSource = projects;
+                // Isitikinam kad comboBoxProjects saugo unikalus vardus(projektai nedubliojami)
+                var uniqueProjects = projects
+                    .GroupBy(p => p.projectname)
+                    .Select(g => g.First())
+                    .ToList();
+
+                comboBoxProject.DataSource = uniqueProjects;
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
-                comboBoxRemaining.DataSource = projects;
+
+                // Pririsam remaining prie projektu
+                comboBoxRemaining.DataSource = uniqueProjects;
                 comboBoxRemaining.DisplayMember = "remaining";
 
 
@@ -61,7 +70,12 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 var parts = repo.GetProjects();
 
-                comboBoxPartList.DataSource = parts;
+                var uniqueParts = parts
+                    .GroupBy(p => p.partname)
+                    .Select(g => g.First())
+                    .ToList();
+
+                comboBoxPartList.DataSource = uniqueParts;
                 comboBoxPartList.DisplayMember = "partname";
                 
 
@@ -123,16 +137,18 @@ namespace AGPS
             }
 
             // Tikrina remaining pasirinktam projektui, kad nepridet daugiau negu reikia
+            
             var allProjects = repo.GetProjects();
             var anyRow = allProjects.FirstOrDefault(x =>
                 x.projectname == projectName &&
                 x.partname == partName);
-
+            
             if (anyRow != null && doneDelta > anyRow.remaining)
             {
                 MessageBox.Show("Done can't be more than remaining.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+            
 
             // Made by negali but tuscia
             if (string.IsNullOrEmpty(madeBy))
@@ -151,7 +167,7 @@ namespace AGPS
             LoadProjects();
             LoadParts();
             MessageBox.Show("Updated!");
-            return;
+            
 
         }
 
@@ -159,6 +175,7 @@ namespace AGPS
         {
 
         }
+        
         private void RefreshCurrentSelection()
         {
             var repo = new ProjectRepository();
@@ -184,7 +201,7 @@ namespace AGPS
 
             if (anyRow != null)
                 comboBoxRemaining.Text = anyRow.remaining.ToString();
-        }
+        } 
 
     }
 }
