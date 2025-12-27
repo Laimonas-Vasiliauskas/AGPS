@@ -1,9 +1,10 @@
-﻿using System;
+﻿using AGPS.Models;
+using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
-using AGPS.Models;
-using System.Configuration;
+using System.Linq;
 
 namespace AGPS.Repositories
 {
@@ -18,9 +19,9 @@ namespace AGPS.Repositories
 
             connectionString = raw.Replace("{PWD}", pwd);
         }
-        public List<Project> GetProjects()
+        public List<Project> GetProjectsWithParts()
         {
-            var projects = new List<Project>();
+            var projects = new Dictionary<int, Project>();
 
             try
             {
@@ -28,72 +29,71 @@ namespace AGPS.Repositories
                 {
                     connection.Open();
 
-                    string sql = "SELECT * From projects ORDER BY id DESC";
+                    string sql = @"
+                SELECT 
+                    p.id AS ProjectId,
+                    p.projectname,
+                    pa.id AS PartId,
+                    pa.project_id,
+                    pa.partname,
+                    pa.madeby,
+                    pa.typeofwork,
+                    pa.created_at,
+                    pa.comments,
+                    pa.remaining,
+                    pa.done
+                FROM projects p
+                LEFT JOIN parts pa ON pa.project_id = p.id
+                ORDER BY p.id DESC";
+
                     using (SqlCommand command = new SqlCommand(sql, connection))
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            Project project = new Project();
+                            int projectId = reader.GetInt32(reader.GetOrdinal("ProjectId"));
 
-                            project.id = Convert.ToInt32(reader["id"]);
-                            project.projectname = Convert.ToString(reader["projectname"]);
+                            // create project once
+                            if (!projects.TryGetValue(projectId, out Project project))
+                            {
+                                project = new Project
+                                {
+                                    id = projectId,
+                                    projectname = reader.IsDBNull(reader.GetOrdinal("projectname")) ? string.Empty : reader.GetString(reader.GetOrdinal("projectname"))
+                                };
+                                projects.Add(projectId, project);
+                            }
 
-                            projects.Add(project);
+                            // add part if exists
+                            if (!reader.IsDBNull(reader.GetOrdinal("PartId")))
+                            {
+                                var part = new Part
+                                {
+                                    id = reader.GetInt32(reader.GetOrdinal("PartId")),
+                                    project_id = reader["project_id"] != DBNull.Value ? Convert.ToInt32(reader["project_id"]) : 0,
+                                    partname = reader["partname"] != DBNull.Value ? Convert.ToString(reader["partname"]) : string.Empty,
+                                    madeby = reader["madeby"] != DBNull.Value ? Convert.ToString(reader["madeby"]) : string.Empty,
+                                    typeofwork = reader["typeofwork"] != DBNull.Value ? Convert.ToString(reader["typeofwork"]) : string.Empty,
+                                    created_at = reader["created_at"] != DBNull.Value ? Convert.ToDateTime(reader["created_at"]) : default(DateTime),
+                                    comments = reader["comments"] != DBNull.Value ? Convert.ToString(reader["comments"]) : string.Empty,
+                                    remaining = reader["remaining"] != DBNull.Value ? Convert.ToInt32(reader["remaining"]) : 0,
+                                    done = reader["done"] != DBNull.Value ? Convert.ToInt32(reader["done"]) : 0
+                                };
+
+                                project.Parts.Add(part);
+                            }
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("An error occurred while retrieving projects: " + ex.Message);
+                Console.WriteLine("An error occurred while retrieving projects with parts: " + ex.Message);
             }
 
-            return projects;
+            return projects.Values.ToList();
         }
 
-        public List<Part> GetParts()
-        {
-            var parts = new List<Part>();
-
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-
-                    string sql = "SELECT * From parts ORDER BY id DESC";
-                    using (SqlCommand command = new SqlCommand(sql, connection))
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            Part part = new Part();
-
-                            part.id = Convert.ToInt32(reader["id"]);
-                            part.project_id = reader["project_id"] != DBNull.Value ? Convert.ToInt32(reader["project_id"]) : 0;
-                            part.partname = Convert.ToString(reader["partname"]);
-                            part.madeby = Convert.ToString(reader["madeby"]);
-                            part.typeofwork = Convert.ToString(reader["typeofwork"]);
-                            part.created_at = Convert.ToDateTime(reader["created_at"]);
-                            part.comments = Convert.ToString(reader["comments"]);
-                            part.remaining = reader["remaining"] != DBNull.Value ? Convert.ToInt32(reader["remaining"]) : 0;
-                            part.done = reader["done"] != DBNull.Value ? Convert.ToInt32(reader["done"]) : 0;
-
-                            parts.Add(part);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("An error occurred while retrieving parts: " + ex.Message);
-            }
-
-            return parts;
-        }
-
-        // New: return parts filtered by project id
         public List<Part> GetPartsByProjectId(int project_id)
         {
             var parts = new List<Part>();
@@ -220,11 +220,15 @@ namespace AGPS.Repositories
             {
                 conn.Open();
 
-                using (SqlCommand cmd = new SqlCommand("dbo.sp_AddWork", conn))
+                using (SqlCommand cmd = new SqlCommand(@"
+    UPDATE parts SET done = done + @doneDelta WHERE id = @id;
+    UPDATE parts SET remaining = remaining - @doneDelta WHERE project_id = 
+        (SELECT project_id FROM parts WHERE id = @id) AND partname = 
+        (SELECT partname FROM parts WHERE id = @id);
+", conn))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@id", id);
-                    cmd.Parameters.AddWithValue("@doneDelta", doneDelta);
+                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
+                    cmd.Parameters.Add("@doneDelta", SqlDbType.Int).Value = doneDelta;
                     cmd.ExecuteNonQuery();
                 }
             }

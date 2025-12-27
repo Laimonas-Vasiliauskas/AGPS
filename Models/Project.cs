@@ -10,7 +10,9 @@ namespace AGPS.Models
     {
         public int id { get; set; }
         public string projectname { get; set; } = string.Empty;
-    
+
+        public ICollection<Part> Parts { get; set; } = new List<Part>();
+
     }
 
     public class Part

@@ -135,6 +135,7 @@
             this.comboBoxPartList.Name = "comboBoxPartList";
             this.comboBoxPartList.Size = new System.Drawing.Size(283, 24);
             this.comboBoxPartList.TabIndex = 9;
+            this.comboBoxPartList.SelectedIndexChanged += new System.EventHandler(this.comboBoxPartList_SelectedIndexChanged);
             // 
             // textBoxMadeBy
             // 

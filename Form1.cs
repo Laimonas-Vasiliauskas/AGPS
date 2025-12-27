@@ -21,8 +21,8 @@ namespace AGPS
         {
             InitializeComponent();
 
-            // Programa užkrauna projektus tam kad iškart žinoti project_id
-            LoadProjects();
+            // Initial load of projects and parts
+            LoadProjectsAndParts();
 
             // Set initial projectId from selection (if any)
             if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
@@ -30,8 +30,16 @@ namespace AGPS
             else if (comboBoxProject.SelectedItem is Project p)
                 project_id = p.id;
 
-            // Užkrauna dalis pasirenktam projektui
-            LoadParts();
+            // Ensure parts combobox is populated for the selected project
+            if (project_id != 0)
+            {
+                LoadPartsForProject(project_id);
+            }
+            else
+            {
+                // If no project selected, ensure parts list still populated
+                LoadPartsForProject(null);
+            }
 
             // Atnaujinimas po update
             RefreshCurrentSelection();
@@ -40,54 +48,62 @@ namespace AGPS
         // Po projekto atnaujinimo, lange turi pasikeist duomenis
         private void UpdateWindow()
         {
-            LoadProjects();
-            LoadParts();
+            // Reload projects list and preserve selection
+            LoadProjectsAndParts(project_id != 0 ? (int?)project_id : null);
+            // Ensure parts refreshed for current selection
+            LoadPartsForProject(project_id != 0 ? (int?)project_id : null);
             RefreshCurrentSelection();
         }
 
-        private void LoadProjects()
+        private void LoadProjectsAndParts(int? selectedProjectId = null)
         {
             try
             {
                 var repo = new ProjectRepository();
-                var projects = repo.GetProjects();
+                var projects = repo.GetProjectsWithParts();
 
-                // Isitikinam kad comboBoxProjects saugo unikalus vardus(projektai nedubliojami)
-                var uniqueProjects = projects
-                    .GroupBy(p => p.projectname)
-                    .Select(g => g.First())
-                    .ToList();
-
-                comboBoxProject.DataSource = uniqueProjects;
+                // ---------- PROJECTS ----------
+                comboBoxProject.DataSource = projects;
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
 
-                
+                // If a project id was supplied, try to select it
+                if (selectedProjectId.HasValue)
+                {
+                    comboBoxProject.SelectedValue = selectedProjectId.Value;
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to load projects: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    "Failed to load projects: " + ex.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
-        private void LoadParts()
+        // Load only parts (used on project selection change)
+        private void LoadPartsForProject(int? selectedProjectId = null)
         {
             try
             {
                 var repo = new ProjectRepository();
-
                 List<Part> parts;
-                if (project_id != 0)
+
+                if (selectedProjectId.HasValue && selectedProjectId.Value != 0)
                 {
-                    // Jeigu projektas pasirinktas, užkrauno projekto dalis pagal project_id
-                    parts = repo.GetPartsByProjectId(project_id);
+                    parts = repo.GetPartsByProjectId(selectedProjectId.Value);
                 }
                 else
                 {
-                    // Jeigu projektas ne pasirinktas, užkrauna  visas dalis
-                    parts = repo.GetParts();
+                    // No specific project - aggregate parts from all projects
+                    var projects = repo.GetProjectsWithParts();
+                    parts = projects.SelectMany(p => p.Parts).ToList();
                 }
-                // Rodo unikalus daliu vardus
+
+                // Unikalūs Part pagal vardą
                 var uniqueParts = parts
                     .GroupBy(p => p.partname)
                     .Select(g => g.First())
@@ -96,12 +112,22 @@ namespace AGPS
                 comboBoxPartList.DataSource = uniqueParts;
                 comboBoxPartList.DisplayMember = "partname";
                 comboBoxPartList.ValueMember = "id";
+
+                // Ensure a part is selected so remaining can be shown
+                if (comboBoxPartList.Items.Count > 0)
+                    comboBoxPartList.SelectedIndex = 0;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Failed to load parts: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    "Failed to load parts: " + ex.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -116,7 +142,7 @@ namespace AGPS
         
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            
+            // Update selected project id
             if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
             {
                 project_id = id;
@@ -126,8 +152,8 @@ namespace AGPS
                 project_id = p.id;
             }
 
-            // Užkrauna dalis ir atnaujina laukelius
-            LoadParts();
+            // Load only parts for the selected project to avoid resetting project combo
+            LoadPartsForProject(project_id != 0 ? (int?)project_id : null);
             RefreshCurrentSelection();
         }
 
@@ -190,6 +216,12 @@ namespace AGPS
 
         }
 
+        // Ensure remaining/done fields update when user selects a different part
+        private void comboBoxPartList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            RefreshCurrentSelection();
+        }
+
         private void RefreshCurrentSelection()
         {
             var repo = new ProjectRepository();
@@ -206,7 +238,7 @@ namespace AGPS
                 x.partname == partName &&
                 x.madeby == madeBy);
 
-            // remaining - bendras (visi vienodą turi), imam bet kurią eilutę iš grupės
+            // remaining - bendras (visi vienodą turi),imam bet kurią eilutę iš grupės
             var anyRow = parts.FirstOrDefault(x => x.partname == partName);
 
             if (myRow != null)
@@ -214,6 +246,8 @@ namespace AGPS
 
             if (anyRow != null)
                 comboBoxRemaining.Text = anyRow.remaining.ToString();
+            else
+                comboBoxRemaining.Text = string.Empty;
         }
 
     }
