@@ -20,17 +20,29 @@ namespace AGPS
         public Form1()
         {
             InitializeComponent();
-            LoadParts();
+
+            // Programa užkrauna projektus tam kad iškart žinoti project_id
             LoadProjects();
-            
 
+            // Set initial projectId from selection (if any)
+            if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
+                project_id = id;
+            else if (comboBoxProject.SelectedItem is Project p)
+                project_id = p.id;
 
+            // Užkrauna dalis pasirenktam projektui
+            LoadParts();
 
+            // Atnaujinimas po update
+            RefreshCurrentSelection();
         }
 
         // Po projekto atnaujinimo, lange turi pasikeist duomenis
         private void UpdateWindow()
-        { 
+        {
+            LoadProjects();
+            LoadParts();
+            RefreshCurrentSelection();
         }
 
         private void LoadProjects()
@@ -50,12 +62,7 @@ namespace AGPS
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
 
-                // Pririsam remaining prie projektu
-                comboBoxRemaining.DataSource = uniqueProjects;
-                comboBoxRemaining.DisplayMember = "remaining";
-
-
-
+                
             }
             catch (Exception ex)
             {
@@ -68,8 +75,19 @@ namespace AGPS
             try
             {
                 var repo = new ProjectRepository();
-                var parts = repo.GetProjects();
 
+                List<Part> parts;
+                if (project_id != 0)
+                {
+                    // Jeigu projektas pasirinktas, užkrauno projekto dalis pagal project_id
+                    parts = repo.GetPartsByProjectId(project_id);
+                }
+                else
+                {
+                    // Jeigu projektas ne pasirinktas, užkrauna  visas dalis
+                    parts = repo.GetParts();
+                }
+                // Rodo unikalus daliu vardus
                 var uniqueParts = parts
                     .GroupBy(p => p.partname)
                     .Select(g => g.First())
@@ -77,28 +95,17 @@ namespace AGPS
 
                 comboBoxPartList.DataSource = uniqueParts;
                 comboBoxPartList.DisplayMember = "partname";
-                
-
-
-
-
-
-
-
+                comboBoxPartList.ValueMember = "id";
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Failed to load parts: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
         }
-
 
         private void Form1_Load(object sender, EventArgs e)
         {
             comboBoxTypeOfWork.SelectedIndex = 0;
-
-
         }
 
         private void label7_Click(object sender, EventArgs e)
@@ -106,20 +113,25 @@ namespace AGPS
 
         }
 
+        
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
+            
             if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
             {
-                projectId = id;
+                project_id = id;
             }
             else if (comboBoxProject.SelectedItem is Project p)
             {
-                projectId = p.id;
+                project_id = p.id;
             }
-            comboBoxPartList.SelectedIndex = comboBoxProject.SelectedIndex;
+
+            // Užkrauna dalis ir atnaujina laukelius
+            LoadParts();
+            RefreshCurrentSelection();
         }
 
-        private int projectId = 0;
+        private int project_id = 0;
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -129,6 +141,7 @@ namespace AGPS
             string partName = comboBoxPartList.Text.Trim();
             string madeBy = textBoxMadeBy.Text.Trim();
             string typeOfWork = comboBoxTypeOfWork.Text;
+            string comments = textBoxComments.Text.Trim();
 
             if (!int.TryParse(textBoxDone.Text, out int doneDelta) || doneDelta <= 0)
             {
@@ -136,19 +149,22 @@ namespace AGPS
                 return;
             }
 
-            // Tikrina remaining pasirinktam projektui, kad nepridet daugiau negu reikia
+            // Užtikrina ar projektas pasirinktas
+            if (project_id == 0)
+            {
+                MessageBox.Show("Please select a project.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             
-            var allProjects = repo.GetProjects();
-            var anyRow = allProjects.FirstOrDefault(x =>
-                x.projectname == projectName &&
-                x.partname == partName);
-            
-            if (anyRow != null && doneDelta > anyRow.remaining)
+            var partsForProject = repo.GetPartsByProjectId(project_id);
+            var anyPartRow = partsForProject.FirstOrDefault(x => x.partname == partName);
+
+            if (anyPartRow != null && doneDelta > anyPartRow.remaining)
             {
                 MessageBox.Show("Done can't be more than remaining.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            
 
             // Made by negali but tuscia
             if (string.IsNullOrEmpty(madeBy))
@@ -158,55 +174,47 @@ namespace AGPS
             }
 
             // 1) Randam arba susikuriam darbuotojo row
-            int rowId = repo.GetOrCreateWorkerRowId(projectName, partName, madeBy, typeOfWork);
+            int rowId = repo.GetOrCreateWorkerRowId(projectName, partName, madeBy, typeOfWork, comments);
 
             // 2) Vykdom SP: done +delta (tik šitam row), remaining -delta (visiems)
-            repo.AddWork(rowId, doneDelta); // AddWork kviečia dbo.sp_AddWork
+            repo.AddWork(rowId, doneDelta); // AddWork kviecia dbo.sp_AddWork
 
-            // 3) Atnaujini langą (persikrauni Remaining ir Done)
-            LoadProjects();
-            LoadParts();
+            // 3) Atnaujina langą
+            UpdateWindow();
+
             MessageBox.Show("Updated!");
-            
-
         }
 
         private void comboBoxTypeOfWork_SelectedIndexChanged(object sender, EventArgs e)
         {
 
         }
-        
+
         private void RefreshCurrentSelection()
         {
             var repo = new ProjectRepository();
-            var projects = repo.GetProjects();
+
+            // Gauna dalis pasirenktam projektui
+            var parts = repo.GetPartsByProjectId(project_id);
 
             string projectName = comboBoxProject.Text;
             string partName = comboBoxPartList.Text;
             string madeBy = textBoxMadeBy.Text;
 
             // done - tik šito darbuotojo
-            var myRow = projects.FirstOrDefault(x =>
-                x.projectname == projectName &&
+            var myRow = parts.FirstOrDefault(x =>
                 x.partname == partName &&
                 x.madeby == madeBy);
 
             // remaining - bendras (visi vienodą turi), imam bet kurią eilutę iš grupės
-            var anyRow = projects.FirstOrDefault(x =>
-                x.projectname == projectName &&
-                x.partname == partName);
+            var anyRow = parts.FirstOrDefault(x => x.partname == partName);
 
             if (myRow != null)
                 textBoxDone.Text = myRow.done.ToString(); // jei nori rodyti "mano total done" kažkur kitur, ne delta laukelyje
 
             if (anyRow != null)
                 comboBoxRemaining.Text = anyRow.remaining.ToString();
-        } 
+        }
 
     }
 }
-// Pridejau naujus exception
-// 1. Done negali but > remaining
-// 2. Made by visada turi but uzpildytas 
-// Kaip pastebejau, jeigu pasirenki type of work pvz: weld, tai kai bandai prideti kita pvz: assemble tai vistiek prideda kaip weld (pastebejimas tik jeigu made by toks pat)
-// Veliau dar padarisiu kad perduotu ir comments 
