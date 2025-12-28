@@ -74,7 +74,7 @@ namespace AGPS.Repositories
                                     partname = reader["partname"] != DBNull.Value ? Convert.ToString(reader["partname"]) : string.Empty,
                                     madeby = reader["madeby"] != DBNull.Value ? Convert.ToString(reader["madeby"]) : string.Empty,
                                     typeofwork = reader["typeofwork"] != DBNull.Value ? Convert.ToString(reader["typeofwork"]) : string.Empty,
-                                    created_at = reader["created_at"] != DBNull.Value ? Convert.ToDateTime(reader["created_at"]) : default(DateTime),
+                                    created_at = reader["created_at"] != DBNull.Value ? Convert.ToDateTime(reader["created_at"]) : DateTime.Now,
                                     comments = reader["comments"] != DBNull.Value ? Convert.ToString(reader["comments"]) : string.Empty,
                                     remaining = reader["remaining"] != DBNull.Value ? Convert.ToInt32(reader["remaining"]) : 0,
                                     done = reader["done"] != DBNull.Value ? Convert.ToInt32(reader["done"]) : 0
