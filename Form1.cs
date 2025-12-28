@@ -119,6 +119,7 @@ namespace AGPS
             
         }
 
+        // Mygtukas UPDATE
         private void button1_Click(object sender, EventArgs e)
         {
             var repo = new ProjectRepository();
@@ -166,6 +167,7 @@ namespace AGPS
             repo.AddWork(rowId, doneDelta); // AddWork kviecia dbo.sp_AddWork
 
             MessageBox.Show("Updated!");
+            LoadProjectsAndParts();
         }
         
     }

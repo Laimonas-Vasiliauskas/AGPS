@@ -221,15 +221,11 @@ namespace AGPS.Repositories
             {
                 conn.Open();
 
-                using (SqlCommand cmd = new SqlCommand(@"
-    UPDATE parts SET done = done + @doneDelta WHERE id = @id;
-    UPDATE parts SET remaining = remaining - @doneDelta WHERE project_id = 
-        (SELECT project_id FROM parts WHERE id = @id) AND partname = 
-        (SELECT partname FROM parts WHERE id = @id);
-", conn))
+                using (SqlCommand cmd = new SqlCommand("dbo.sp_AddWork", conn))
                 {
-                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
-                    cmd.Parameters.Add("@doneDelta", SqlDbType.Int).Value = doneDelta;
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@doneDelta", doneDelta);
                     cmd.ExecuteNonQuery();
                 }
             }
