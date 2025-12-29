@@ -53,7 +53,6 @@ namespace AGPS.Repositories
                         {
                             int projectId = reader.GetInt32(reader.GetOrdinal("ProjectId"));
 
-                            // create project once
                             if (!projects.TryGetValue(projectId, out Project project))
                             {
                                 project = new Project
@@ -64,7 +63,7 @@ namespace AGPS.Repositories
                                 projects.Add(projectId, project);
                             }
 
-                            // add part if exists
+                            // Pridėda dalį, jeigu dalis egzistuoja
                             if (!reader.IsDBNull(reader.GetOrdinal("PartId")))
                             {
                                 var part = new Part
@@ -144,7 +143,7 @@ namespace AGPS.Repositories
             {
                 conn.Open();
 
-                // 0) Find project id by name
+                // 0) Randa projekto id pagal projekto varda
                 int project_id = 0;
                 string projSql = "SELECT TOP 1 id FROM projects WHERE projectname = @p ORDER BY id DESC";
                 using (var cmd = new SqlCommand(projSql, conn))
@@ -157,7 +156,7 @@ namespace AGPS.Repositories
 
                 if (project_id == 0)
                 {
-                    // project not found - caller should ensure projects exist
+                    
                     throw new InvalidOperationException($"Project '{projectName}' not found.");
                 }
 

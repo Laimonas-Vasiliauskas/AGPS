@@ -17,15 +17,39 @@ namespace AGPS
 {
     public partial class Form1 : Form
     {
+        private readonly Timer _doneWatchTimer = new Timer();
+        private string _projectsSignature = string.Empty;
         public Form1()
         {
             InitializeComponent();
+            StartNewProjectWatcher();
 
             // Užkrauna projektus ir dalis
             LoadProjectsAndParts();
+
+            // Inicializuoti parašą pagal esamą DB būseną, kad nebūtų iškart pranešama
+            try
+            {
+                var repo = new ProjectRepository();
+                var projects = repo.GetProjectsWithParts();
+                _projectsSignature = BuildProjectsSignature(projects);
+            }
+            catch
+            {
+                _projectsSignature = string.Empty;
+            }
         }
 
         private int project_id = 0;
+
+        private string BuildProjectsSignature(List<Project> projects)
+        {
+            if (projects == null) return string.Empty;
+            var parts = projects
+                .OrderBy(p => p.id)
+                .Select(p => p.id + ":" + p.projectname + ":" + string.Join(",", p.Parts.OrderBy(pp => pp.id).Select(pp => pp.partname ?? string.Empty)));
+            return string.Join("|", parts);
+        }
 
 
         private void LoadProjectsAndParts(int? selectedProjectId = null)
@@ -35,12 +59,12 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 var projects = repo.GetProjectsWithParts();
 
-                // ---------- PROJECTS ----------
+
                 comboBoxProject.DataSource = projects;
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
 
-                // If a project id was supplied, try to select it
+ 
                 if (selectedProjectId.HasValue)
                 {
                     comboBoxProject.SelectedValue = selectedProjectId.Value;
@@ -56,8 +80,7 @@ namespace AGPS
                 );
             }
         }
-
-        // Load only parts (used on project selection change)
+        // Užkrauna tik dalis, kai keičiasi projekto pasirinkimas 
         private void LoadPartsForProject(int? selectedProjectId = null)
         {
             try
@@ -104,7 +127,7 @@ namespace AGPS
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Update selected project id
+
             if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
             {
                 project_id = id;
@@ -114,7 +137,7 @@ namespace AGPS
                 project_id = p.id;
             }
 
-            // Load only parts for the selected project to avoid resetting project combo
+            // Užkrauna tik dalis pasirenktam projektui, kad išvengti comboBox reset
             LoadPartsForProject(project_id != 0 ? (int?)project_id : null);
             
         }
@@ -167,8 +190,79 @@ namespace AGPS
             repo.AddWork(rowId, doneDelta); // AddWork kviecia dbo.sp_AddWork
 
             MessageBox.Show("Updated!");
-            LoadProjectsAndParts();
+            LoadPartsForProject(project_id);
         }
-        
-    }
-}
+
+        private void StartNewProjectWatcher()
+        {
+            
+            _doneWatchTimer.Interval = 5000;
+            _doneWatchTimer.Tick += NewProjectWatchTimer_Tick;
+            _doneWatchTimer.Start();
+        }
+
+        // Jeigu DB sukuriamas naujas projektas ar dalis, gaunamas pranėšimas
+        private void NewProjectWatchTimer_Tick(object sender, EventArgs e)
+        {
+            
+            // DB tikrinimas fone
+            Task.Run(() =>
+            {
+                try
+                {
+                    var repo = new ProjectRepository();
+                    var projects = repo.GetProjectsWithParts();
+                    var sig = BuildProjectsSignature(projects);
+                    if (sig != _projectsSignature)
+                    {
+                        _projectsSignature = sig;
+                        
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            MessageBox.Show("Database changed: new project or part detected.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            
+                            int sel = project_id;
+                            LoadProjectsAndParts(sel != 0 ? (int?)sel : null);
+                            LoadPartsForProject(sel != 0 ? (int?)sel : null);
+                            RefreshCurrentSelection();
+                        }));
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            });
+        }
+
+        // Po pranėšimo atnaujina laukelius
+        private void RefreshCurrentSelection()
+        {
+            try
+            {
+                var repo = new ProjectRepository();
+                var parts = repo.GetPartsByProjectId(project_id);
+
+                string partName = comboBoxPartList.Text;
+                string madeBy = textBoxMadeBy.Text;
+
+                var myRow = parts.FirstOrDefault(x => x.partname == partName && x.madeby == madeBy);
+                var anyRow = parts.FirstOrDefault(x => x.partname == partName);
+
+                if (myRow != null)
+                    textBoxDone.Text = myRow.done.ToString();
+                else
+                    textBoxDone.Text = "";
+
+                if (anyRow != null)
+                    comboBoxRemaining.Text = anyRow.remaining.ToString();
+                else
+                    comboBoxRemaining.Text = string.Empty;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+     }
+ }

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
@@ -44,6 +45,7 @@
             this.textBoxDone = new System.Windows.Forms.TextBox();
             this.comboBoxRemaining = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // label1
@@ -239,6 +241,10 @@
             this.label5.Text = "Work Register";
             this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // timer1
+            // 
+            this.timer1.Tick += new System.EventHandler(this.NewProjectWatchTimer_Tick);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -290,6 +296,7 @@
         private System.Windows.Forms.TextBox textBoxDone;
         private System.Windows.Forms.ComboBox comboBoxRemaining;
         private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 
