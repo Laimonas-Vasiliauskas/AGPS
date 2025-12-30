@@ -143,11 +143,11 @@ namespace AGPS
         }
 
         // Mygtukas UPDATE
+        // Mygtukas UPDATE
         private void button1_Click(object sender, EventArgs e)
         {
             var repo = new ProjectRepository();
 
-            string projectName = comboBoxProject.Text.Trim();
             string partName = comboBoxPartList.Text.Trim();
             string madeBy = textBoxMadeBy.Text.Trim();
             string typeOfWork = comboBoxTypeOfWork.Text;
@@ -166,7 +166,7 @@ namespace AGPS
                 return;
             }
 
-            
+            // Patikrinam remaining (kaip pas tave buvo)
             var partsForProject = repo.GetPartsByProjectId(project_id);
             var anyPartRow = partsForProject.FirstOrDefault(x => x.partname == partName);
 
@@ -177,20 +177,31 @@ namespace AGPS
             }
 
             // Made by negali but tuscia
-            if (string.IsNullOrEmpty(madeBy))
+            if (string.IsNullOrWhiteSpace(madeBy))
             {
                 MessageBox.Show("The 'Made By' field can't be empty.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // 1) Randam arba susikuriam darbuotojo row
-            int rowId = repo.GetOrCreateWorkerRowId(projectName, partName, madeBy, typeOfWork, comments);
+            // ✅ VIENAS KVietimas: INSERT user row + DELETE admin template row
+            try
+            {
+                repo.InsertUserPartAndRemoveAdmin(
+                    project_id,
+                    partName,
+                    madeBy,
+                    typeOfWork,
+                    comments,
+                    doneDelta
+                );
 
-            // 2) Vykdom SP: done +delta (tik šitam row), remaining -delta (visiems)
-            repo.AddWork(rowId, doneDelta); // AddWork kviecia dbo.sp_AddWork
-
-            MessageBox.Show("Updated!");
-            LoadPartsForProject(project_id);
+                MessageBox.Show("Updated!");
+                LoadPartsForProject(project_id);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("DB update failed: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void StartNewProjectWatcher()

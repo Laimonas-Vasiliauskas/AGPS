@@ -229,6 +229,31 @@ namespace AGPS.Repositories
                 }
             }
         }
+        public void InsertUserPartAndRemoveAdmin(
+        int projectId,
+        string partName,
+        string madeBy,
+        string typeOfWork,
+        string comments,
+        int doneDelta)
+        {
+            using (var con = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("dbo.sp_RegisterWork", con)
+)
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("@project_id", projectId);
+                cmd.Parameters.AddWithValue("@partname", partName);
+                cmd.Parameters.AddWithValue("@madeby", madeBy);
+                cmd.Parameters.AddWithValue("@typeofwork", typeOfWork);
+                cmd.Parameters.AddWithValue("@comments", comments ?? "");
+                cmd.Parameters.AddWithValue("@doneDelta", doneDelta);
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
 
 
     }
