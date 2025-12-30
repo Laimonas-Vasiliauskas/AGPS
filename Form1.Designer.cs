@@ -180,6 +180,7 @@
             // 
             // button1
             // 
+            this.button1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.button1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.button1.Location = new System.Drawing.Point(245, 335);
             this.button1.Margin = new System.Windows.Forms.Padding(2);
