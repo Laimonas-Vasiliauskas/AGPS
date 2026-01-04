@@ -45,9 +45,23 @@ namespace AGPS
         private string BuildProjectsSignature(List<Project> projects)
         {
             if (projects == null) return string.Empty;
+
             var parts = projects
                 .OrderBy(p => p.id)
-                .Select(p => p.id + ":" + p.projectname + ":" + string.Join(",", p.Parts.OrderBy(pp => pp.id).Select(pp => pp.partname ?? string.Empty)));
+                .Select(p =>
+                {
+                    // Suveikia pagal naujus, unikalius dalių vardus 
+                    var uniquePartNames = p.Parts
+                        .Select(pp => (pp.partname ?? string.Empty).Trim())
+                        .Where(n => !string.IsNullOrEmpty(n))
+                        .Select(n => n.ToLowerInvariant())
+                        .Distinct()
+                        .OrderBy(n => n);
+
+                    var partSig = string.Join(",", uniquePartNames);
+                    return p.id + ":" + p.projectname + ":" + partSig;
+                });
+
             return string.Join("|", parts);
         }
 
@@ -143,7 +157,6 @@ namespace AGPS
         }
 
         // Mygtukas UPDATE
-        // Mygtukas UPDATE
         private void button1_Click(object sender, EventArgs e)
         {
             var repo = new ProjectRepository();
@@ -183,7 +196,7 @@ namespace AGPS
                 return;
             }
 
-            // ✅ VIENAS KVietimas: INSERT user row + DELETE admin template row
+            // VIENAS KVietimas: INSERT user row + DELETE admin template row
             try
             {
                 repo.InsertUserPartAndRemoveAdmin(
