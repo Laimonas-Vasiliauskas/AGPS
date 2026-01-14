@@ -273,7 +273,7 @@
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "AGPS(user)";
+            this.Text = "AGPS(Work Control)";
             this.ResumeLayout(false);
             this.PerformLayout();
 
