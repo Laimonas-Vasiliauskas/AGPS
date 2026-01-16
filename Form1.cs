@@ -17,17 +17,14 @@ namespace AGPS
 {
     public partial class Form1 : Form
     {
-        private readonly Timer _doneWatchTimer = new Timer();
-        private string _projectsSignature = string.Empty;
-        // Flag to avoid multiple message boxes showing at the same time
-        private bool _notificationShowing = false;
+        private readonly Timer _doneWatchTimer = new Timer(); // Kuriamas timeris
+        private string _projectsSignature = string.Empty; // DB būsena
+        private bool _notificationShowing = false; // Apsauga, kad nebūtų kelių pranešimų vienu metu
         public Form1()
         {
             InitializeComponent();
-            StartNewProjectWatcher();
-
-            // Užkrauna projektus ir dalis
-            LoadProjectsAndParts();
+            StartNewProjectWatcher(); // Paleidžiamas DB stebėtuojas
+            LoadProjectsAndParts(); // Užkrauna projektus ir dalis į comboBox
 
             // Inicializuoti parašą pagal esamą DB būseną, kad nebūtų iškart pranešama
             try
@@ -67,7 +64,7 @@ namespace AGPS
             return string.Join("|", parts);
         }
 
-
+        // Metodas užkrauna projektus ir dalis į comboBox
         private void LoadProjectsAndParts(int? selectedProjectId = null)
         {
             try
@@ -80,7 +77,7 @@ namespace AGPS
                 comboBoxProject.DisplayMember = "projectname";
                 comboBoxProject.ValueMember = "id";
 
- 
+                // Palieka tą patį pasirinkta projektą po atnaujinimo
                 if (selectedProjectId.HasValue)
                 {
                     comboBoxProject.SelectedValue = selectedProjectId.Value;
@@ -104,10 +101,13 @@ namespace AGPS
                 var repo = new ProjectRepository();
                 List<Part> parts;
 
+                // Jei pasirinktas projektas, tai užkrauna tik to projekto dalis
                 if (selectedProjectId.HasValue && selectedProjectId.Value != 0)
                 {
                     parts = repo.GetPartsByProjectId(selectedProjectId.Value);
                 }
+
+                // Jei ne, tai užkrauna visų projektų dalys
                 else
                 {
                     
@@ -143,11 +143,13 @@ namespace AGPS
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            // Nustato project_id
             if (comboBoxProject.SelectedValue != null && int.TryParse(comboBoxProject.SelectedValue.ToString(), out int id))
             {
                 project_id = id;
             }
+
+            // Užkrauna pasirinkto projekto dalis
             else if (comboBoxProject.SelectedItem is Project p)
             {
                 project_id = p.id;
@@ -168,6 +170,7 @@ namespace AGPS
             string typeOfWork = comboBoxTypeOfWork.Text;
             string comments = textBoxComments.Text.Trim();
 
+            // Turi būti skaičius ir daugiau už 0
             if (!int.TryParse(textBoxDone.Text, out int doneDelta) || doneDelta <= 0)
             {
                 MessageBox.Show("Done must be number or more than 0.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -181,30 +184,31 @@ namespace AGPS
                 return;
             }
 
-            // Patikrinam remaining (kaip pas tave buvo)
+            // Patikrinam remaining 
             var partsForProject = repo.GetPartsByProjectId(project_id);
             var anyPartRow = partsForProject.FirstOrDefault(x => x.partname == partName);
 
+            // Paruoštos dalis negali būti > likusių dalių
             if (anyPartRow != null && doneDelta > anyPartRow.remaining)
             {
                 MessageBox.Show("Done can't be more than remaining.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Made by negali but tuscia
+            // Made by laukelis negali būti tusčias
             if (string.IsNullOrWhiteSpace(madeBy))
             {
                 MessageBox.Show("The 'Made By' field can't be empty.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // VIENAS KVietimas: INSERT user row + DELETE admin template row
+            // Įrašo vartotojo atliktą darbą ir pašalina admin šabloninį įrašą
             try
             {
                 repo.InsertUserPartAndRemoveAdmin(project_id, partName, madeBy, typeOfWork, comments, doneDelta);
 
                 MessageBox.Show("Updated!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadPartsForProject(project_id);
+                LoadPartsForProject(project_id); // Atnaujinimas, kad sutaptu remaining kiekis
             }
             catch (Exception ex)
             {
@@ -212,6 +216,7 @@ namespace AGPS
             }
         }
 
+        // Paleidžiamas taimeris
         private void StartNewProjectWatcher()
         {
             
@@ -220,7 +225,7 @@ namespace AGPS
             _doneWatchTimer.Start();
         }
 
-        // Jeigu DB sukuriamas naujas projektas ar dalis, gaunamas pranėšimas
+        // Jeigu DB, atsiranda naujas projektas ar dalis, gaunamas pranėšimas
         private void NewProjectWatchTimer_Tick(object sender, EventArgs e)
         {
             
