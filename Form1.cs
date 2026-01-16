@@ -19,6 +19,8 @@ namespace AGPS
     {
         private readonly Timer _doneWatchTimer = new Timer();
         private string _projectsSignature = string.Empty;
+        // Flag to avoid multiple message boxes showing at the same time
+        private bool _notificationShowing = false;
         public Form1()
         {
             InitializeComponent();
@@ -199,16 +201,9 @@ namespace AGPS
             // VIENAS KVietimas: INSERT user row + DELETE admin template row
             try
             {
-                repo.InsertUserPartAndRemoveAdmin(
-                    project_id,
-                    partName,
-                    madeBy,
-                    typeOfWork,
-                    comments,
-                    doneDelta
-                );
+                repo.InsertUserPartAndRemoveAdmin(project_id, partName, madeBy, typeOfWork, comments, doneDelta);
 
-                MessageBox.Show("Updated!");
+                MessageBox.Show("Updated!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadPartsForProject(project_id);
             }
             catch (Exception ex)
@@ -243,12 +238,23 @@ namespace AGPS
                         
                         this.BeginInvoke(new Action(() =>
                         {
-                            MessageBox.Show("Database changed: new project or part detected.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            
-                            int sel = project_id;
-                            LoadProjectsAndParts(sel != 0 ? (int?)sel : null);
-                            LoadPartsForProject(sel != 0 ? (int?)sel : null);
-                            RefreshCurrentSelection();
+                            // Užtikrina, kad rodomas tik vienas pranešimas
+                            if (_notificationShowing) return;
+
+                            _notificationShowing = true;
+                            try
+                            {
+                                MessageBox.Show("Database changed: project added or deleted.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                                int sel = project_id;
+                                LoadProjectsAndParts(sel != 0 ? (int?)sel : null);
+                                LoadPartsForProject(sel != 0 ? (int?)sel : null);
+                                RefreshCurrentSelection();
+                            }
+                            finally
+                            {
+                                _notificationShowing = false;
+                            }
                         }));
                     }
                 }
@@ -259,7 +265,7 @@ namespace AGPS
             });
         }
 
-        // Po pranėšimo atnaujina laukelius
+        // Po pranesimo atnaujina laukelius
         private void RefreshCurrentSelection()
         {
             try
